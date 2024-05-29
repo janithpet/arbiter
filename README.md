@@ -22,7 +22,7 @@ Arbiter uses the following object-like preprocessor macros to modify its behavio
         </tr>
         <tr>
           <td rowspan=1>ARBITER_STDERR_LOG_DIR</td>
-            <td rowspan=1>string</td>
+            <td rowspan=1>&ltlocation&gt</td>
             <td>Location of folder to store the `stderr` logs.</td>
         </tr>
     </tbody>
