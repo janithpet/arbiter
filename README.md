@@ -12,7 +12,7 @@ Arbiter uses the following object-like preprocessor macros to modify its behavio
 <table>
     <tbody>
         <tr>
-            <td rowspan=2>ARBITER_VERBOSE</td>
+            <td rowspan=2><code>ARBITER_VERBOSE</code></td>
             <td rowspan=1>0</td>
             <td>Prints all status of all unit tests and summary.</td>
         </tr>
@@ -21,9 +21,9 @@ Arbiter uses the following object-like preprocessor macros to modify its behavio
             <td rowspan=>Prints only failed unit tests and summary.</td>
         </tr>
         <tr>
-          <td rowspan=1>ARBITER_STDERR_LOG_DIR</td>
+          <td rowspan=1><code>ARBITER_STDERR_LOG_DIR</code></td>
             <td rowspan=1>&ltlocation&gt</td>
-            <td>Location of folder to store the `stderr` logs.</td>
+            <td>Location of folder to store the <code>stderr</code> logs.</td>
         </tr>
     </tbody>
 </table>
