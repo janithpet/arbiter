@@ -1,2 +1,2 @@
 # arbiter
-A lightweight unit test library for C.
+A lightweight unit test library written in C.

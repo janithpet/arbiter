@@ -1,4 +1,4 @@
-ARBITER_VERBOSE=0
+ARBITER_VERBOSE=1
 ARBITER_STDERR_LOG_DIR=tests-stderr
 
 CFLAGS=-D'ARBITER_VERBOSE=$(ARBITER_VERBOSE)' -D'ARBITER_STDERR_LOG_DIR="$(ARBITER_STDERR_LOG_DIR)"'
@@ -12,9 +12,13 @@ INCLUDE_DIR=include
 SRC_DIR=src
 TESTS_DIR=tests
 
-INCLUDE_FLAGS=-I$(INCLUDE_DIR)
+ARBITER_SRC=arbiter/src
+ARBITER_INCLUDE=arbiter/include
 
-SOURCES:=$(SRC_DIR)/integer-pow.c $(SRC_DIR)/arbiter.c $(TESTS_DIR)/test-integer-pow.c
+INCLUDE_FLAGS=-I$(INCLUDE_DIR) -I$(ARBITER_INCLUDE)
+
+
+SOURCES:=$(SRC_DIR)/integer-pow.c $(ARBITER_SRC)/arbiter.c $(TESTS_DIR)/test-integer-pow.c
 
 $(BUILD_DIR)/arbiter-test-integer-pow: $(SOURCES) Makefile
 	@mkdir -p $(dir $@)
