@@ -38,14 +38,6 @@
 
 #include <sys/stat.h>
 
-#ifndef ARBITER_VERBOSE
-	#define ARBITER_VERBOSE 0
-#endif
-
-#ifndef ARBITER_STDERR_LOG_DIR
-	#define ARBITER_STDERR_LOG_DIR "tests-stderr"
-#endif
-
 static jmp_buf __jump_buffer;
 
 bool SIGSEGV_caught = false;

@@ -24,7 +24,13 @@
 #ifndef ARBITER_H
 #define ARBITER_H
 
-#define ARBITER_FLOATINGPOINT_ACCURACY 0.0000001
+#ifndef ARBITER_VERBOSE
+	#define ARBITER_VERBOSE 0
+#endif
+
+#ifndef ARBITER_STDERR_LOG_DIR
+	#define ARBITER_STDERR_LOG_DIR "tests-stderr"
+#endif
 
 enum ReturnCode {
 	OK    = 0,
