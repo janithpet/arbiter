@@ -39,5 +39,5 @@ Arbiter uses the following object-like preprocessor macros to modify its behavio
 These object-like macros can be set in `arbiter.h` or passed in during your compile step:
 
 ```shell
-	gcc -D'ARBITER_VERBOSE=1' -D'ARBITER_STDERR_LOG_DIR="tests-stderr-logs"' -Iarbiter/include/arbiter.h -o tests unit-tests.c arbiter/src/arbiter.c
+gcc -D'ARBITER_VERBOSE=1' -D'ARBITER_STDERR_LOG_DIR="tests-stderr-logs"' -Iarbiter/include/arbiter.h -o tests unit-tests.c arbiter/src/arbiter.c
 ```
