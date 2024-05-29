@@ -9,7 +9,7 @@ Arbiter is a lightweight unit-test library written in C. Arbiter isn't a command
 
 ## Available options
 Arbiter uses the following object-like preprocessor macros to modify its behaviour:
-<table style="margin-left: auto; margin-right: auto;">
+<table>
     <tbody>
         <tr>
             <td rowspan=2>ARBITER_VERBOSE</td>
