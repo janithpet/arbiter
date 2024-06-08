@@ -138,6 +138,9 @@ Completed:       1/1 passed in 62µs
 
 Any `stderr` logs will be saved in the file `tests-stderr/stderr-test_square-1717135660.log`.
 
+[!NOTE]
+In general, the `stderr` logs will be saved in the directory specified by `ARBITER_STDERR_LOG_DIR` (see [Available options](#available-options)).
+
 
 
 ## Available options
