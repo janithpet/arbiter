@@ -9,8 +9,66 @@ Arbiter is a lightweight unit-test library written in C. Arbiter isn't a command
 See [`/example`](example) for an example test suite written using Arbiter.
 
 ### Writing unit tests
+Unit tests should be written as functions with the signature `void unit_test()`. Inside a unit test, you can use [`arbiter_assert`](/include/arbiter.h) to evoke an assertion test; the test is considered to have failed if the asserted expression evaluates to `false`.
+
+For example:
+```c
+/**
+ * This test succeeds
+ */
+void unit_test() {
+    arbiter_assert(1 == 1);
+}
+
+/**
+ * This test fails
+ */
+void failing_unit_test() {
+    arbiter_assert(1 == 0);
+}
+```
+
+See [`/example/tests/test-integer-pow.c`](/example/tests/test-integer-pow.c) for more detailed examples.
+
 ### Running a suite of unit tests
+A test suite can be run by using the [`arbiter_run_tests`](include/arbiter.h) function. `arbiter_run_tests` has the following signature:
+```c
+void arbiter_run_tests(int num_tests, char* name, void (*tests[])());
+```
+
+For example, the tests above can be run using:
+```c
+void (*tests[2])() = {
+        unit_test,
+        failing_unit_test,
+};
+
+arbiter_run_tests(2, "example_test_suite", tests);
+```
+
+See [`/example/tests/test-integer-pow.c`](/example/tests/test-integer-pow.c) for more detailed examples.
+
+This function must be called inside a `main` function. You can then compile your library sources, the arbiter and the test suite source (that contains the `main` function that calls `arbiter_run_tests`) to an executable.
+
+
+
+
+
+
+
 ### Types of errors that are caught
+Currently, Arbiter catches the following types of failed states
+
+<center>
+
+|Failed state|Description|
+|----------|:-------------:|
+| Assertion failures | These occur when the boolean condition passed to `arbiter_assert` is `false`. |
+| Aborts | Arbiter catches the [`SIGABRT`](https://en.cppreference.com/w/c/program/SIG_types) signal and reports these as an abort failure. |
+| Segmentation Faults| Arbiter catches the [`SIGSEGV`](https://en.cppreference.com/w/c/program/SIG_types) signal and reports these as a Segmentation fault. |
+
+
+</center>
 
 ### Available options
 Arbiter uses the following object-like preprocessor macros to modify its behaviour:
