@@ -35,6 +35,9 @@ static void test_integer_pow() {
 	arbiter_assert(expected_result == integer_pow(base, exponent));
 }
 
+/**
+ * This test fails due to a failed assertion.
+ */
 static void test_integer_pow_fail() {
 	int base            = 3;
 	int exponent        = 4;
@@ -44,6 +47,9 @@ static void test_integer_pow_fail() {
 	arbiter_assert(expected_result == integer_pow(base, exponent + 1));
 }
 
+/**
+ * This test fails due to an abortion.
+ */
 static void test_integer_pow_error() {
 	int base            = 3;
 	int exponent        = 4;
@@ -60,6 +66,9 @@ static void test_integer_pow_error() {
 	free(array);
 }
 
+/**
+ * This test fails due to a segmentation fault.
+ */
 static void test_integer_pow_segmentation_fault() {
 	int base            = 3;
 	int exponent        = 4;

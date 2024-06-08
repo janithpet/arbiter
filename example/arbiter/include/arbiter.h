@@ -31,7 +31,26 @@ enum ReturnCode {
 	ERROR = 1,
 };
 
+/**
+ * @brief Assert whether the given boolean condition holds
+ *
+ * `arbiter_assert` is the main way to carry out tests, use it where you want to assert that some condition should hold.
+ *
+ * @param expression The boolean condition to test. If the condition evaluates to 0, it failed; it succeeded otherwise.
+ *
+ */
 void arbiter_assert(int expression);
+
+/**
+ * @brief Run a suite of tests.
+ *
+ * `arbiter_run_tests` is to be used in your `main` function to run a suite of tests.
+ *
+ * @param num_tests The number of tests in the test suite.
+ * @param name The name for the test suite. This will be printed in the output summary and will be used to name where the stderr logs are saved.
+ * @param tests An array of function pointers that have a signature `void test_()`. There should be `num_tests` function pointers.
+ *
+ */
 void arbiter_run_tests(int num_tests, char* name, void (*tests[])());
 
 #endif

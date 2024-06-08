@@ -2,10 +2,50 @@
 Arbiter is a lightweight unit-test library written in C. Arbiter isn't a command-line tool. Rather, it is a header file and a single C source file that you compile with your unit tests and source code to generate an executable.
 
 ## Usage
+See [Example Usage](#example-usage) for a walkthrough of using Arbiter. You can also look at [`/example`](example).
 
 ### Writing unit tests
 ### Running a suite of unit tests
 ### Types of errors that are caught
+
+### Available options
+Arbiter uses the following object-like preprocessor macros to modify its behaviour:
+<table>
+    <thead>
+        <tr>
+            <th>Option name</th>
+            <th>Possilbe Values</th>
+            <th>Description</th>
+            <th>Default</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td rowspan=2><code>ARBITER_VERBOSE</code></td>
+            <td rowspan=1>0</td>
+            <td>Prints all status of all unit tests and summary.</td>
+			<td rowspan=2>0</td>
+        </tr>
+        <tr>
+            <td rowspan=1>1</td>
+            <td rowspan=>Prints only failed unit tests and summary.</td>
+        </tr>
+        <tr>
+          <td rowspan=1><code>ARBITER_STDERR_LOG_DIR</code></td>
+            <td rowspan=1>"&ltlocation&gt"</td>
+            <td>Location of folder to store the <code>stderr</code> logs. <br>
+            <b>NOTE:</b> The double quotation marks are necessary.</td>
+			<td rowspan=2>"tests-stderr"</td>
+        </tr>
+    </tbody>
+</table>
+
+These object-like macros can be set in `arbiter.h` or passed in during your compile step:
+
+```shell
+gcc -D'ARBITER_VERBOSE=1' -D'ARBITER_STDERR_LOG_DIR="tests-stderr-logs"' -Iarbiter/include/arbiter.h -o tests unit-tests.c arbiter/src/arbiter.c
+```
+
 
 ## Example Usage
 To describe the usage we will use an example. The full setup can be seen in the `example` folder.
@@ -129,7 +169,7 @@ gcc -Iarbiter/include -Iinclude -o test-integer-pow tests/test-integer-pow.c src
 ```
 
 This should create an executable `test-integer-pow` which can be run:
-```bash
+```
 > ./test-integer-pow
 Running tests in test_square (tests-stderr/stderr-test_square-1717135660.log):
 Successful:      test_integer_pow
@@ -140,43 +180,100 @@ Any `stderr` logs will be saved in the file `tests-stderr/stderr-test_square-171
 
 > [!NOTE]
 > In general, the `stderr` logs will be saved in the directory specified by `ARBITER_STDERR_LOG_DIR` (see [Available options](#available-options)).
+>
+> The name of the log file will be `stderr-<name>-<unix time>.log` where `name` is specified in [`arbiter_run_tests`](include/arbiter.h).
 
 
+### What does failure look like
+Lets add the following unit tests.
 
-## Available options
-Arbiter uses the following object-like preprocessor macros to modify its behaviour:
-<table>
-    <thead>
-        <tr>
-            <th>Option name</th>
-            <th>Possilbe Values</th>
-            <th>Description</th>
-            <th>Default</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td rowspan=2><code>ARBITER_VERBOSE</code></td>
-            <td rowspan=1>0</td>
-            <td>Prints all status of all unit tests and summary.</td>
-			<td rowspan=2>0</td>
-        </tr>
-        <tr>
-            <td rowspan=1>1</td>
-            <td rowspan=>Prints only failed unit tests and summary.</td>
-        </tr>
-        <tr>
-          <td rowspan=1><code>ARBITER_STDERR_LOG_DIR</code></td>
-            <td rowspan=1>"&ltlocation&gt"</td>
-            <td>Location of folder to store the <code>stderr</code> logs. <br>
-            <b>NOTE:</b> The double quotation marks are necessary.</td>
-			<td rowspan=2>"tests-stderr"</td>
-        </tr>
-    </tbody>
-</table>
+```c
+/**
+ * This test fails due to a failed assertion.
+ */
+static void test_integer_pow_fail() {
+	int base            = 3;
+	int exponent        = 4;
 
-These object-like macros can be set in `arbiter.h` or passed in during your compile step:
+	int expected_result = 81;
 
-```shell
-gcc -D'ARBITER_VERBOSE=1' -D'ARBITER_STDERR_LOG_DIR="tests-stderr-logs"' -Iarbiter/include/arbiter.h -o tests unit-tests.c arbiter/src/arbiter.c
+	arbiter_assert(expected_result == integer_pow(base, exponent + 1));
+}
+
+/**
+ * This test fails due to an abortion.
+ */
+static void test_integer_pow_error() {
+	int base            = 3;
+	int exponent        = 4;
+
+	int expected_result = 81;
+
+	arbiter_assert(expected_result == integer_pow(base, exponent));
+	int* array = malloc(sizeof(int));
+	if (array == NULL) {
+		abort();
+	}
+
+	free(array);
+	free(array);
+}
+
+/**
+ * This test fails due to a segmentation fault.
+ */
+static void test_integer_pow_segmentation_fault() {
+	int base            = 3;
+	int exponent        = 4;
+
+	int expected_result = 81;
+
+	arbiter_assert(expected_result == integer_pow(base, exponent));
+
+	int* array = malloc(sizeof(int));
+	if (array == NULL) {
+		exit(1);
+	}
+
+	int _ = array[-0xFFFFF];
+
+	free(array);
+}
+```
+
+After modifying the `main` function to:
+```c
+#define NUM_TESTS 4
+
+int main() {
+	void (*tests[NUM_TESTS])() = {
+			test_integer_pow,
+			test_integer_pow_fail,
+			test_integer_pow_error,
+			test_integer_pow_segmentation_fault,
+	};
+	arbiter_run_tests(NUM_TESTS, "test_square", tests);
+}
+```
+
+we can compile and run the test suite again:
+
+```
+> gcc -Iarbiter/include -Iinclude -o test-integer-pow tests/test-integer-pow.c src/library.c arbiter/src/arbter.c
+> ./test-integer-pow
+Running tests in test_square (tests-stderr/stderr-test_square-1717858050.log):
+Successful:      test_integer_pow
+Failed:          test_integer_pow_fail (Assertion failed)
+Failed:          test_integer_pow_error (SIGABRT occurred - please check tests-stderr/stderr-test_square-1717858050.log)
+Failed:          test_integer_pow_segmentation_fault (Segmentation Fault - please check tests-stderr/stderr-test_square-1717858050.log)
+Completed:       1/4 passed in 431µs
+```
+
+`tests-stderr/stderr-test_square-1717858050.log` looks like:
+```
+arbiter-test-integer-pow(84366,0x1fedccc00) malloc: Double free of object 0x14c6059b0
+arbiter-test-integer-pow(84366,0x1fedccc00) malloc: *** set a breakpoint in malloc_error_break to debug
+test_integer_pow_error^
+
+test_integer_pow_segmentation_fault^
 ```
