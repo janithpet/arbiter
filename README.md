@@ -1,6 +1,10 @@
 # Arbiter
 Arbiter is a lightweight unit-test library written in C. Arbiter isn't a command-line tool. Rather, it is a header file and a single C source file that you compile with your unit tests and source code to generate an executable.
 
+<center>
+<img width="1000" alt="image" src="https://github.com/janithpet/arbiter/assets/22471198/5eec1930-5d2b-4ee3-b4d3-7f6fba1d3f39">
+</center>
+
 ## Usage
 See [`/example`](example) for an example test suite written using Arbiter.
 
