@@ -62,7 +62,7 @@ Currently, Arbiter catches the following types of failed states
 <center>
 
 |Failed state|Description|
-|----------|:-------------:|
+|----------|-------------|
 | Assertion failures | These occur when the boolean condition passed to `arbiter_assert` is `false`. |
 | Aborts | Arbiter catches the [`SIGABRT`](https://en.cppreference.com/w/c/program/SIG_types) signal and reports these as an abort failure. |
 | Segmentation Faults| Arbiter catches the [`SIGSEGV`](https://en.cppreference.com/w/c/program/SIG_types) signal and reports these as a Segmentation fault. |
