@@ -24,20 +24,32 @@
 #ifndef ARBITER_H
 #define ARBITER_H
 
-#ifndef ARBITER_VERBOSE
-	#define ARBITER_VERBOSE 0
-#endif
-
-#ifndef ARBITER_STDERR_LOG_DIR
-	#define ARBITER_STDERR_LOG_DIR "tests-stderr"
-#endif
+#define ARBITER_FLOATINGPOINT_ACCURACY 0.0000001
 
 enum ReturnCode {
 	OK    = 0,
 	ERROR = 1,
 };
 
+/**
+ * @brief Assert whether the given boolean condition holds
+ *
+ * `arbiter_assert` is the main way to carry out tests, use it where you want to assert that some condition should hold.
+ *
+ * @param expression The boolean condition to test. If the condition evaluates to 0, it failed; it succeeded otherwise.
+ *
+ */
 void arbiter_assert(int expression);
-void arbiter_run_tests(int num_tests, char* name, void (*tests[])());
 
+/**
+ * @brief Run a suite of tests.
+ *
+ * `arbiter_run_tests` is to be used in your `main` function to run a suite of tests.
+ *
+ * @param num_tests The number of tests in the test suite.
+ * @param name The name for the test suite. This will be printed in the output summary and will be used to name where the stderr logs are saved.
+ * @param tests An array of function pointers that have a signature `void test_()`. There should be `num_tests` function pointers.
+ *
+ */
+void arbiter_run_tests(int num_tests, char* name, void (*tests[])());
 #endif
