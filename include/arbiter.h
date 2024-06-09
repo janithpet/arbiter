@@ -38,6 +38,6 @@ enum ReturnCode {
 };
 
 void arbiter_assert(int expression);
-void arbter_run_tests(int num_tests, char* name, void (*tests[])());
+void arbiter_run_tests(int num_tests, char* name, void (*tests[])());
 
 #endif
