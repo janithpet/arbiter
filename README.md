@@ -8,6 +8,10 @@ Arbiter is a lightweight unit-test library written in C. Arbiter isn't a command
 ## Usage
 See [`/example`](example) for an example test suite written using Arbiter.
 
+### Using Arbiter
+To use Arbiter, we recommend cloning this repository to the root of your project. Then include [`include/arbiter.h`](include/arbiter.h) as an include path during the compilation step and compile [`src/arbiter.c`](src/arbiter.c`) along with your unit tests. See [`/example`](example) for a more detailed walkthrough.
+
+
 ### Writing unit tests
 Unit tests should be written as functions with the signature `void unit_test()`. Inside a unit test, you can use [`arbiter_assert`](/include/arbiter.h) to evoke an assertion test; the test is considered to have failed if the asserted expression evaluates to `false`.
 
