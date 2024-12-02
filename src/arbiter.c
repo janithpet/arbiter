@@ -90,7 +90,7 @@ static char* get_function_name_from_backtrace(char* bt_output) {
 	return f_name;
 }
 
-static int test_wrapper(char* name, void (*test_function)(), char* stderr_file_path) {
+static int test_wrapper(char* name, void (*test_function)(), char* stderr_file_path_amendment) {
 #if ARBITER_VERBOSE
 	char** _backtrace_output;
 	void*  fptr       = test_function;
@@ -120,15 +120,15 @@ static int test_wrapper(char* name, void (*test_function)(), char* stderr_file_p
 #endif
 		if (SIGSEGV_caught) {
 			fprintf(stderr, "%s^\n\n", f_name);
-			printf("\033[0;31mFailed:\033[0m\t\t %s (Segmentation Fault - please check %s)\n", f_name, stderr_file_path);
+			printf("\033[0;31mFailed:\033[0m\t\t %s (Segmentation Fault%s)\n", f_name, stderr_file_path_amendment);
 			SIGSEGV_caught = false;
 		} else if (SIGTRAP_caught) {
 			fprintf(stderr, "%s^\n\n", f_name);
-			printf("\033[0;31mFailed:\033[0m\t\t %s (SIGTRAP occurred - please check %s)\n", f_name, stderr_file_path);
+			printf("\033[0;31mFailed:\033[0m\t\t %s (SIGTRAP occurred%s)\n", f_name, stderr_file_path_amendment);
 			SIGTRAP_caught = false;
 		} else if (SIGABRT_caught) {
 			fprintf(stderr, "%s^\n\n", f_name);
-			printf("\033[0;31mFailed:\033[0m\t\t %s (SIGABRT occurred - please check %s)\n", f_name, stderr_file_path);
+			printf("\033[0;31mFailed:\033[0m\t\t %s (SIGABRT occurred%s)\n", f_name, stderr_file_path_amendment);
 			SIGTRAP_caught = false;
 		} else {
 			printf("\033[0;31mFailed:\033[0m\t\t %s (Assertion failed)\n", f_name);
@@ -182,20 +182,26 @@ void arbiter_run_tests(int NUM_TESTS, char* name, void (*tests[])()) {
 	signal(SIGTRAP, handle_sigtrap);
 	signal(SIGABRT, handle_sigabrt);
 
-	struct stat st = {0};
+	char stderr_file_path[4096];
 
-	if (stat(ARBITER_STDERR_LOG_DIR, &st) == -1) {
-		mkdir(ARBITER_STDERR_LOG_DIR, 0700);
+	if (strcmp(ARBITER_STDERR_LOG_DIR, "") != 0) {
+		struct stat st = {0};
+
+		if (stat(ARBITER_STDERR_LOG_DIR, &st) == -1) {
+			mkdir(ARBITER_STDERR_LOG_DIR, 0700);
+		}
+
+		FILE* fp;
+		sprintf(stderr_file_path, "%s/stderr-%s-%lu.log", ARBITER_STDERR_LOG_DIR, name, (unsigned long)time(NULL));
+
+		fp = fopen(stderr_file_path, "w");
+		dup2(fileno(fp), fileno(stderr));
+
+		printf("Running tests in \033[0;34m%s\033[0m (%s):\n", name, stderr_file_path);
+	} else {
+		sprintf(stderr_file_path, "%s", "");
+		printf("Running tests in \033[0;34m%s\033[0m:\n", name);
 	}
-
-	FILE* fp;
-	char  stderr_file_path[4096];
-	sprintf(stderr_file_path, "%s/stderr-%s-%lu.log", ARBITER_STDERR_LOG_DIR, name, (unsigned long)time(NULL));
-
-	fp = fopen(stderr_file_path, "w");
-	dup2(fileno(fp), fileno(stderr));
-
-	printf("Running tests in \033[0;34m%s\033[0m (%s):\n", name, stderr_file_path);
 
 	int return_codes[NUM_TESTS];
 	memset(return_codes, ERROR, sizeof(ERROR));
@@ -203,8 +209,10 @@ void arbiter_run_tests(int NUM_TESTS, char* name, void (*tests[])()) {
 	struct timeval stop, start;
 	gettimeofday(&start, NULL);
 
+	char stderr_file_path_amendment[4096];
+	sprintf(stderr_file_path_amendment, " - please check %s", stderr_file_path);
 	for (int i = 0; i < NUM_TESTS; i++) {
-		return_codes[i] = test_wrapper(name, tests[i], stderr_file_path);
+		return_codes[i] = test_wrapper(name, tests[i], stderr_file_path_amendment);
 	}
 
 	gettimeofday(&stop, NULL);
