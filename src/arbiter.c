@@ -119,15 +119,15 @@ static int test_wrapper(char* name, void (*test_function)(), char* stderr_file_p
 		char* f_name      = get_function_name_from_backtrace(_backtrace_output[0]);
 #endif
 		if (SIGSEGV_caught) {
-			fprintf(stderr, "%s^\n\n", f_name);
+			fprintf(stderr, "%s\n\n", f_name);
 			printf("\033[0;31mFailed:\033[0m\t\t %s (Segmentation Fault%s)\n", f_name, stderr_file_path_amendment);
 			SIGSEGV_caught = false;
 		} else if (SIGTRAP_caught) {
-			fprintf(stderr, "%s^\n\n", f_name);
+			fprintf(stderr, "%s\n\n", f_name);
 			printf("\033[0;31mFailed:\033[0m\t\t %s (SIGTRAP occurred%s)\n", f_name, stderr_file_path_amendment);
 			SIGTRAP_caught = false;
 		} else if (SIGABRT_caught) {
-			fprintf(stderr, "%s^\n\n", f_name);
+			fprintf(stderr, "%s\n\n", f_name);
 			printf("\033[0;31mFailed:\033[0m\t\t %s (SIGABRT occurred%s)\n", f_name, stderr_file_path_amendment);
 			SIGTRAP_caught = false;
 		} else {
