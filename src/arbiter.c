@@ -183,6 +183,7 @@ void arbiter_run_tests(int NUM_TESTS, char* name, void (*tests[])()) {
 	signal(SIGABRT, handle_sigabrt);
 
 	char stderr_file_path[4096];
+	char stderr_file_path_amendment[4096];
 
 	if (strcmp(ARBITER_STDERR_LOG_DIR, "") != 0) {
 		struct stat st = {0};
@@ -193,6 +194,7 @@ void arbiter_run_tests(int NUM_TESTS, char* name, void (*tests[])()) {
 
 		FILE* fp;
 		sprintf(stderr_file_path, "%s/stderr-%s-%lu.log", ARBITER_STDERR_LOG_DIR, name, (unsigned long)time(NULL));
+		sprintf(stderr_file_path_amendment, " - please check %s", stderr_file_path);
 
 		fp = fopen(stderr_file_path, "w");
 		dup2(fileno(fp), fileno(stderr));
@@ -200,6 +202,7 @@ void arbiter_run_tests(int NUM_TESTS, char* name, void (*tests[])()) {
 		printf("Running tests in \033[0;34m%s\033[0m (%s):\n", name, stderr_file_path);
 	} else {
 		sprintf(stderr_file_path, "%s", "");
+		sprintf(stderr_file_path_amendment, "");
 		printf("Running tests in \033[0;34m%s\033[0m:\n", name);
 	}
 
@@ -209,8 +212,6 @@ void arbiter_run_tests(int NUM_TESTS, char* name, void (*tests[])()) {
 	struct timeval stop, start;
 	gettimeofday(&start, NULL);
 
-	char stderr_file_path_amendment[4096];
-	sprintf(stderr_file_path_amendment, " - please check %s", stderr_file_path);
 	for (int i = 0; i < NUM_TESTS; i++) {
 		return_codes[i] = test_wrapper(name, tests[i], stderr_file_path_amendment);
 	}
