@@ -1,5 +1,4 @@
-/*
-  MIT License
+/**  MIT License
 
   Copyright(c) 2024 Janith Petangoda
 
@@ -23,17 +22,15 @@
 
 #include "arbiter.h"
 
-#include <assert.h>
 #include <execinfo.h>
 #include <regex.h>
-#include <setjmp.h>
 #include <signal.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <sys/stat.h>
@@ -46,15 +43,13 @@
 	#define ARBITER_STDERR_LOG_DIR "tests-stderr"
 #endif
 
-static jmp_buf __jump_buffer;
-
-bool SIGSEGV_caught = false;
-bool SIGTRAP_caught = false;
-bool SIGABRT_caught = false;
-
 void arbiter_assert(int expression) {
 	if (!expression) {
-		longjmp(__jump_buffer, 1);
+		// Each test runs in its own child process (see `test_wrapper`), so a
+		// failed assertion simply exits that child. The parent detects the
+		// non-OK exit status and reports the failure.
+		fflush(stdout);
+		_exit(ERROR);
 	}
 }
 
@@ -81,7 +76,7 @@ static char* get_function_name_from_backtrace(char* bt_output) {
 		return f_name;
 	}
 
-	char* f_name                                  = malloc((regmatch[1].rm_eo - regmatch[1].rm_so) * sizeof(char));
+	char* f_name                                  = malloc((regmatch[1].rm_eo - regmatch[1].rm_so + 1) * sizeof(char));
 	f_name[regmatch[1].rm_eo - regmatch[1].rm_so] = 0;
 	strncpy(f_name, bt_output + regmatch[1].rm_so, regmatch[1].rm_eo - regmatch[1].rm_so);
 
@@ -90,57 +85,74 @@ static char* get_function_name_from_backtrace(char* bt_output) {
 	return f_name;
 }
 
-static int test_wrapper(char* name, void (*test_function)(), char* stderr_file_path_amendment) {
-#if ARBITER_VERBOSE
-	char** _backtrace_output;
-	void*  fptr       = test_function;
+static int test_wrapper(const char* name, void (*test_function)(), char* stderr_file_path_amendment) {
+	void*  fptr              = test_function;
+	char** _backtrace_output = backtrace_symbols(&fptr, 1);
+	char*  f_name            = get_function_name_from_backtrace(_backtrace_output[0]);
 
-	_backtrace_output = backtrace_symbols(&fptr, 2);
+	fflush(stdout);
+	fflush(stderr);
 
-	char* f_name      = get_function_name_from_backtrace(_backtrace_output[0]);
-#endif
+	pid_t pid = fork();
 
-	if (!setjmp(__jump_buffer)) {
-		test_function();
-#if ARBITER_VERBOSE
-		printf("Successful:\t %s\n", f_name);
-
-		free(_backtrace_output);
-		free(f_name);
-#endif
-		return OK;
-	} else {
-#if !ARBITER_VERBOSE
-		char** _backtrace_output;
-		void*  fptr       = test_function;
-
-		_backtrace_output = backtrace_symbols(&fptr, 2);
-
-		char* f_name      = get_function_name_from_backtrace(_backtrace_output[0]);
-#endif
-		if (SIGSEGV_caught) {
-			fprintf(stderr, "%s\n\n", f_name);
-			printf("\033[0;31mFailed:\033[0m\t\t %s (Segmentation Fault%s)\n", f_name, stderr_file_path_amendment);
-			SIGSEGV_caught = false;
-		} else if (SIGTRAP_caught) {
-			fprintf(stderr, "%s\n\n", f_name);
-			printf("\033[0;31mFailed:\033[0m\t\t %s (SIGTRAP occurred%s)\n", f_name, stderr_file_path_amendment);
-			SIGTRAP_caught = false;
-		} else if (SIGABRT_caught) {
-			fprintf(stderr, "%s\n\n", f_name);
-			printf("\033[0;31mFailed:\033[0m\t\t %s (SIGABRT occurred%s)\n", f_name, stderr_file_path_amendment);
-			SIGTRAP_caught = false;
-		} else {
-			printf("\033[0;31mFailed:\033[0m\t\t %s (Assertion failed)\n", f_name);
-		}
-
+	if (pid < 0) {
+		printf("\033[0;31mFailed:\033[0m\t\t %s (fork failed)\n", f_name);
 		free(_backtrace_output);
 		free(f_name);
 		return ERROR;
 	}
+
+	if (pid == 0) {
+		// Child process: run the test in isolation. A crash dies here without
+		// touching the parent or any sibling test; a failed assertion exits
+		// non-zero via `arbiter_assert`.
+		test_function();
+		fflush(stdout);
+		_exit(OK);
+	}
+
+	// Parent process: wait for the child and inspect how it terminated.
+	int status;
+	waitpid(pid, &status, 0);
+
+	if (WIFEXITED(status)) {
+		if (WEXITSTATUS(status) == OK) {
+#if ARBITER_VERBOSE
+			printf("Successful:\t %s\n", f_name);
+#endif
+			free(_backtrace_output);
+			free(f_name);
+			return OK;
+		}
+
+		printf("\033[0;31mFailed:\033[0m\t\t %s (Assertion failed)\n", f_name);
+	} else if (WIFSIGNALED(status)) {
+		int sig = WTERMSIG(status);
+		fprintf(stderr, "%s\n\n", f_name);
+
+		if (sig == SIGSEGV) {
+			printf("\033[0;31mFailed:\033[0m\t\t %s (Segmentation Fault%s)\n", f_name, stderr_file_path_amendment);
+		} else if (sig == SIGTRAP) {
+			printf("\033[0;31mFailed:\033[0m\t\t %s (SIGTRAP occurred%s)\n", f_name, stderr_file_path_amendment);
+		} else if (sig == SIGABRT) {
+			printf("\033[0;31mFailed:\033[0m\t\t %s (SIGABRT occurred%s)\n", f_name, stderr_file_path_amendment);
+		} else {
+			printf("\033[0;31mFailed:\033[0m\t\t %s (Terminated by signal %d%s)\n", f_name, sig, stderr_file_path_amendment);
+		}
+	} else {
+		printf("\033[0;31mFailed:\033[0m\t\t %s (Abnormal termination)\n", f_name);
+	}
+
+	free(_backtrace_output);
+	free(f_name);
+	return ERROR;
 }
 
-static void print_outcome(int NUM_TESTS, char* name, int return_codes[], long int completion_time) {
+static long int timeval_diff_us(struct timeval start, struct timeval stop) {
+	return (stop.tv_sec - start.tv_sec) * 1000000 + (stop.tv_usec - start.tv_usec);
+}
+
+static void print_outcome(int NUM_TESTS, const char* name, int return_codes[], long int completion_time) {
 	float num_successful = 0;
 	for (int i = 0; i < NUM_TESTS; i++) {
 		if (return_codes[i] == OK) {
@@ -162,28 +174,16 @@ static void print_outcome(int NUM_TESTS, char* name, int return_codes[], long in
 	       (int)num_successful, NUM_TESTS, completion_time);
 }
 
-void handle_sigsegv(int sig) {
-	SIGSEGV_caught = true;
-	longjmp(__jump_buffer, 1);
-}
-
-void handle_sigtrap(int sig) {
-	SIGTRAP_caught = true;
-	longjmp(__jump_buffer, 1);
-}
-
-void handle_sigabrt(int sig) {
-	SIGABRT_caught = true;
-	longjmp(__jump_buffer, 1);
-}
-
-void arbiter_run_tests(int NUM_TESTS, char* name, void (*tests[])()) {
-	signal(SIGSEGV, handle_sigsegv);
-	signal(SIGTRAP, handle_sigtrap);
-	signal(SIGABRT, handle_sigabrt);
-
+void arbiter_run_tests(int NUM_TESTS, const char* name, void (*tests[])(void)) {
 	char stderr_file_path[4096];
 	char stderr_file_path_amendment[4096];
+
+	// A non-empty amendment doubles as the "stderr was redirected" flag below.
+	stderr_file_path_amendment[0] = '\0';
+
+	// Holds a copy of the original stderr fd so it can be restored after the
+	// suite; -1 means stderr was left untouched.
+	int saved_stderr              = -1;
 
 	if (strcmp(ARBITER_STDERR_LOG_DIR, "") != 0) {
 		struct stat st = {0};
@@ -192,32 +192,65 @@ void arbiter_run_tests(int NUM_TESTS, char* name, void (*tests[])()) {
 			mkdir(ARBITER_STDERR_LOG_DIR, 0700);
 		}
 
-		FILE* fp;
-		sprintf(stderr_file_path, "%s/stderr-%s-%lu.log", ARBITER_STDERR_LOG_DIR, name, (unsigned long)time(NULL));
-		sprintf(stderr_file_path_amendment, " - please check %s", stderr_file_path);
+		snprintf(
+				stderr_file_path,
+				sizeof(stderr_file_path),
+				"%s/stderr-%s-%lu.log",
+				ARBITER_STDERR_LOG_DIR,
+				name,
+				(unsigned long)time(NULL));
 
-		fp = fopen(stderr_file_path, "w");
-		dup2(fileno(fp), fileno(stderr));
+		FILE* fp = fopen(stderr_file_path, "w");
+		if (fp != NULL) {
+			saved_stderr = dup(fileno(stderr));
+			if (saved_stderr != -1 && dup2(fileno(fp), fileno(stderr)) != -1) {
+				snprintf(
+						stderr_file_path_amendment,
+						sizeof(stderr_file_path_amendment),
+						" - please check %s",
+						stderr_file_path);
+			} else if (saved_stderr != -1) {
+				// dup2 failed: drop the saved fd and leave stderr untouched.
+				close(saved_stderr);
+				saved_stderr = -1;
+			}
+			// stderr now owns its own fd to the log, so the stream is no longer
+			// needed (and on failure this just cleans it up).
+			fclose(fp);
+		}
+	}
 
+	if (stderr_file_path_amendment[0] != '\0') {
 		printf("Running tests in \033[0;34m%s\033[0m (%s):\n", name, stderr_file_path);
 	} else {
-		sprintf(stderr_file_path, "%s", "");
-		sprintf(stderr_file_path_amendment, "");
 		printf("Running tests in \033[0;34m%s\033[0m:\n", name);
 	}
 
 	int return_codes[NUM_TESTS];
-	memset(return_codes, ERROR, sizeof(ERROR));
 
-	struct timeval stop, start;
-	gettimeofday(&start, NULL);
+	// Each test runs in its own child process, so wall-clock time around the
+	// loop would be dominated by fork() overhead and, for crashing tests, the
+	// OS crash-handling machinery. Instead we measure the CPU time actually
+	// spent in the test children: getrusage(RUSAGE_CHILDREN) accumulates the
+	// usage of already-reaped children, so the delta across the loop is exactly
+	// the time spent running the tests.
+	struct rusage ru_start, ru_stop;
+	getrusage(RUSAGE_CHILDREN, &ru_start);
 
 	for (int i = 0; i < NUM_TESTS; i++) {
 		return_codes[i] = test_wrapper(name, tests[i], stderr_file_path_amendment);
 	}
 
-	gettimeofday(&stop, NULL);
-	long int completion_time = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+	getrusage(RUSAGE_CHILDREN, &ru_stop);
+	long int completion_time = timeval_diff_us(ru_start.ru_utime, ru_stop.ru_utime) +
+	                           timeval_diff_us(ru_start.ru_stime, ru_stop.ru_stime);
 
 	print_outcome(NUM_TESTS, name, return_codes, completion_time);
+
+	// Restore the caller's original stderr so it keeps working after arbiter.
+	if (saved_stderr != -1) {
+		fflush(stderr);
+		dup2(saved_stderr, fileno(stderr));
+		close(saved_stderr);
+	}
 }

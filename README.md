@@ -13,7 +13,7 @@ To use Arbiter, we recommend cloning this repository to the root of your project
 
 
 ### Writing unit tests
-Unit tests should be written as functions with the signature `void unit_test()`. Inside a unit test, you can use [`arbiter_assert`](/include/arbiter.h) to evoke an assertion test; the test is considered to have failed if the asserted expression evaluates to `false`.
+Unit tests should be written as functions with the signature `void unit_test()`. Inside a unit test, you can use [`arbiter_assert`](/include/arbiter.h) to invoke an assertion test; the test is considered to have failed if the asserted expression evaluates to `false`.
 
 For example:
 ```c
@@ -37,7 +37,7 @@ See [`/example/tests/test-integer-pow.c`](/example/tests/test-integer-pow.c) for
 ### Running a suite of unit tests
 A test suite can be run by using the [`arbiter_run_tests`](include/arbiter.h) function. `arbiter_run_tests` has the following signature:
 ```c
-void arbiter_run_tests(int num_tests, char* name, void (*tests[])());
+void arbiter_run_tests(int num_tests, const char* name, void (*tests[])(void));
 ```
 
 For example, the tests above can be run using:
@@ -55,22 +55,18 @@ See [`/example/tests/test-integer-pow.c`](/example/tests/test-integer-pow.c) for
 This function must be called inside a `main` function. You can then compile your library sources, the arbiter and the test suite source (that contains the `main` function that calls `arbiter_run_tests`) to an executable.
 
 
-
-
-
-
-
 ### Types of errors that are caught
-Currently, Arbiter catches the following types of failed states
+Each unit test runs in its own child process, and Arbiter reports the following failed states based on how that process terminates:
 
 <center>
 
 |Failed state|Description|
 |----------|:-------------:|
 | Assertion failures | These occur when the boolean condition passed to `arbiter_assert` is `false`. |
-| Aborts | Arbiter catches the [`SIGABRT`](https://en.cppreference.com/w/c/program/SIG_types) signal and reports these as an abort failure. |
-| Segmentation Faults| Arbiter catches the [`SIGSEGV`](https://en.cppreference.com/w/c/program/SIG_types) signal and reports these as a Segmentation fault. |
-
+| Aborts | The test was terminated by the [`SIGABRT`](https://en.cppreference.com/w/c/program/SIG_types) signal. |
+| Segmentation Faults | The test was terminated by the [`SIGSEGV`](https://en.cppreference.com/w/c/program/SIG_types) signal. |
+| Traps | The test was terminated by the [`SIGTRAP`](https://en.cppreference.com/w/c/program/SIG_types) signal. |
+| Other signals | Any other terminating signal, reported as `Terminated by signal <SIGNAL>`. |
 
 </center>
 
@@ -80,7 +76,7 @@ Arbiter uses the following object-like preprocessor macros to modify its behavio
     <thead>
         <tr>
             <th>Option name</th>
-            <th>Possilbe Values</th>
+            <th>Possible Values</th>
             <th>Description</th>
             <th>Default</th>
         </tr>
@@ -89,19 +85,19 @@ Arbiter uses the following object-like preprocessor macros to modify its behavio
         <tr>
             <td rowspan=2><code>ARBITER_VERBOSE</code></td>
             <td rowspan=1>0</td>
-            <td>Prints all status of all unit tests and summary.</td>
+            <td>Prints only failed unit tests and summary.</td>
 			<td rowspan=2>0</td>
         </tr>
         <tr>
             <td rowspan=1>1</td>
-            <td rowspan=>Prints only failed unit tests and summary.</td>
+            <td>Prints all status of all unit tests and summary.</td>
         </tr>
         <tr>
           <td rowspan=1><code>ARBITER_STDERR_LOG_DIR</code></td>
-            <td rowspan=1>"&ltlocation&gt"</td>
+            <td rowspan=1>"&lt;location&gt;"</td>
             <td>Location of folder to store the <code>stderr</code> logs. <br>
             <b>NOTE:</b> The double quotation marks are necessary.</td>
-			<td rowspan=2>"tests-stderr"</td>
+			<td rowspan=1>"tests-stderr"</td>
         </tr>
     </tbody>
 </table>
@@ -109,5 +105,21 @@ Arbiter uses the following object-like preprocessor macros to modify its behavio
 These object-like macros can be set in `arbiter.h` or passed in during your compile step:
 
 ```shell
-gcc -D'ARBITER_VERBOSE=1' -D'ARBITER_STDERR_LOG_DIR="tests-stderr-logs"' -Iarbiter/include/arbiter.h -o tests unit-tests.c arbiter/src/arbiter.c
+gcc -D'ARBITER_VERBOSE=1' -D'ARBITER_STDERR_LOG_DIR="tests-stderr-logs"' -Iarbiter/include/ -o tests unit-tests.c arbiter/src/arbiter.c
+```
+
+## Development
+
+### Unit tests
+The unit tests for Arbiter are written using [Criterion](https://github.com/snaipe/criterion). Installation instructions for criterion can be found [here](https://github.com/snaipe/criterion#packages).
+
+Run unit tests for Arbiter using the following `make` command.
+```shell
+make test
+```
+
+A successful run looks like:
+```shell
+[====] Synthesis: Tested: 9 | Passing: 9 | Failing: 0 | Crashing: 0
+[====] Synthesis: Tested: 4 | Passing: 4 | Failing: 0 | Crashing: 0
 ```

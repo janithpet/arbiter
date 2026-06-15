@@ -1,5 +1,8 @@
 **DS_Store
 .vscode**
+.zed**
 
 build**
 tests-stderr**
+
+compile_flags.txt

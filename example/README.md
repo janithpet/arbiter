@@ -1,3 +1,4 @@
+
 # Example
 Let us assume that we have a library with the following header file `include/library.h`:
 ```c
@@ -9,7 +10,7 @@ int integer_pow(int base, int exponent);
 #endif
 ```
 
-The source code for this library is in a source file `src/library.c`:
+The source code for this library is in a source file `src/integer-pow.c`:
 ```c
 #include "library.h"
 
@@ -63,6 +64,7 @@ To do this using Arbiter, we first clone arbiter into the root of the project di
 ```bash
 git clone https://github.com/janithpet/arbiter.git
 ```
+Note that in this repository, we already have a symbolic link to the arbiter files. The following changes are also already reflected in the appropriate files.
 
 We then modify `tests/test-integer-pow.c` as follows:
 
@@ -76,12 +78,12 @@ We then modify `tests/test-integer-pow.c` as follows:
         void (*tests[NUM_TESTS])() = {
                 test_integer_pow,
         };
-        arbiter_run_tests(NUM_TESTS, "test_square", tests);
+        arbiter_run_tests(NUM_TESTS, "test-integer-pow", tests);
     }
     ```
     To run the tests, you use the function
     ```c
-    void arbiter_run_tests(int num_tests, char* name, void (*tests[])())
+    void arbiter_run_tests(int num_tests, const char* name, void (*tests[])(void))
     ```
     This takes as arguments the number of tests you want to run, the name of the suite of unit tests (this is for logging purposes) and an array of function pointers that point to the unit tests that you want to run.
 
@@ -99,7 +101,7 @@ static void test_integer_pow() {
 
 	int expected_result = 81;
 
-	assert(expected_result == integer_pow(base, exponent));
+	arbiter_assert(expected_result == integer_pow(base, exponent));
 }
 
 #define NUM_TESTS 1
@@ -108,24 +110,24 @@ int main() {
     void (*tests[NUM_TESTS])() = {
             test_integer_pow,
     };
-    arbiter_run_tests(NUM_TESTS, "test_square", tests);
+    arbiter_run_tests(NUM_TESTS, "test-integer-pow", tests);
 }
 ```
 
 We can now compile the code while including the headers and source code from the cloned arbiter repository:
 ```bash
-gcc -Iarbiter/include -Iinclude -o test-integer-pow tests/test-integer-pow.c src/library.c arbiter/src/arbter.c
+gcc -Iarbiter/include -Iinclude -o test-integer-pow tests/test-integer-pow.c src/integer-pow.c arbiter/src/arbiter.c
 ```
 
 This should create an executable `test-integer-pow` which can be run:
 ```
 > ./test-integer-pow
-Running tests in test_square (tests-stderr/stderr-test_square-1717135660.log):
+Running tests in test-integer-pow (tests-stderr/stderr-test-integer-pow-1717135660.log):
 Successful:      test_integer_pow
 Completed:       1/1 passed in 62µs
 ```
 
-Any `stderr` logs will be saved in the file `tests-stderr/stderr-test_square-1717135660.log`.
+Any `stderr` logs will be saved in the file `tests-stderr/stderr-test-integer-pow-1717135660.log`.
 
 > [!NOTE]
 > In general, the `stderr` logs will be saved in the directory specified by `ARBITER_STDERR_LOG_DIR` (see [Available options](#available-options)).
@@ -150,7 +152,7 @@ static void test_integer_pow_fail() {
 }
 
 /**
- * This test fails due to an abortion.
+ * This test fails due to a double free.
  */
 static void test_integer_pow_error() {
 	int base            = 3;
@@ -163,6 +165,9 @@ static void test_integer_pow_error() {
 	if (array == NULL) {
 		abort();
 	}
+
+	// test string to show redirection of stderr to log file
+	fprintf(stderr, "%s\n", "test_integer_pow_error: string to stderr");
 
 	free(array);
 	free(array);
@@ -179,14 +184,11 @@ static void test_integer_pow_segmentation_fault() {
 
 	arbiter_assert(expected_result == integer_pow(base, exponent));
 
-	int* array = malloc(sizeof(int));
-	if (array == NULL) {
-		exit(1);
-	}
+	// test string to show redirection of stderr to log file
+	fprintf(stderr, "%s\n", "test_integer_pow_segmentation_fault: string to stderr");
 
-	int _ = array[-0xFFFFF];
-
-	free(array);
+	volatile int* p = NULL;
+	*p              = 42;
 }
 ```
 
@@ -201,28 +203,28 @@ int main() {
 			test_integer_pow_error,
 			test_integer_pow_segmentation_fault,
 	};
-	arbiter_run_tests(NUM_TESTS, "test_square", tests);
+	arbiter_run_tests(NUM_TESTS, "test-integer-pow", tests);
 }
 ```
 
 we can compile and run the test suite again:
 
-```
-> gcc -Iarbiter/include -Iinclude -o test-integer-pow tests/test-integer-pow.c src/library.c arbiter/src/arbter.c
+```shell
+> gcc -Iarbiter/include -Iinclude -o test-integer-pow tests/test-integer-pow.c src/integer-pow.c arbiter/src/arbiter.c
 > ./test-integer-pow
-Running tests in test_square (tests-stderr/stderr-test_square-1717858050.log):
+Running tests in test-integer-pow (tests-stderr/stderr-test-integer-pow-1717858050.log):
 Successful:      test_integer_pow
 Failed:          test_integer_pow_fail (Assertion failed)
-Failed:          test_integer_pow_error (SIGABRT occurred - please check tests-stderr/stderr-test_square-1717858050.log)
-Failed:          test_integer_pow_segmentation_fault (Segmentation Fault - please check tests-stderr/stderr-test_square-1717858050.log)
-Completed:       1/4 passed in 431µs
+Failed:          test_integer_pow_error (SIGTRAP occurred - please check tests-stderr/stderr-test-integer-pow-1717858050.log)
+Failed:          test_integer_pow_segmentation_fault (Segmentation Fault - please check tests-stderr/stderr-test-integer-pow-1717858050.log)
+Completed:       1/4 passed in 1039µs
 ```
 
-`tests-stderr/stderr-test_square-1717858050.log` looks like:
-```
-arbiter-test-integer-pow(84366,0x1fedccc00) malloc: Double free of object 0x14c6059b0
-arbiter-test-integer-pow(84366,0x1fedccc00) malloc: *** set a breakpoint in malloc_error_break to debug
-test_integer_pow_error^
+`tests-stderr/stderr-test-integer-pow-1717858050.log` looks like:
+```shell
+test_integer_pow_error: string to stderr
+test_integer_pow_error
 
-test_integer_pow_segmentation_fault^
+test_integer_pow_segmentation_fault: string to stderr
+test_integer_pow_segmentation_fault
 ```
