@@ -1,5 +1,4 @@
-/*
-  MIT License
+/**  MIT License
 
   Copyright(c) 2024 Janith Petangoda
 
@@ -23,6 +22,10 @@
 
 #ifndef ARBITER_H
 #define ARBITER_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define ARBITER_FLOATINGPOINT_ACCURACY 0.0000001
 
@@ -51,5 +54,10 @@ void arbiter_assert(int expression);
  * @param tests An array of function pointers that have a signature `void test_()`. There should be `num_tests` function pointers.
  *
  */
-void arbiter_run_tests(int num_tests, char* name, void (*tests[])());
+void arbiter_run_tests(int num_tests, const char* name, void (*tests[])(void));
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

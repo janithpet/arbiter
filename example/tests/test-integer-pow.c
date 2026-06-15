@@ -1,5 +1,4 @@
-/*
-  MIT License
+/**  MIT License
 
   Copyright(c) 2024 Janith Petangoda
 
@@ -24,6 +23,7 @@
 #include "arbiter.h"
 #include "library.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 static void test_integer_pow() {
@@ -48,7 +48,7 @@ static void test_integer_pow_fail() {
 }
 
 /**
- * This test fails due to an abortion.
+ * This test fails due to a double free.
  */
 static void test_integer_pow_error() {
 	int base            = 3;
@@ -61,6 +61,9 @@ static void test_integer_pow_error() {
 	if (array == NULL) {
 		abort();
 	}
+
+	// test string to show redirection of stderr to log file
+	fprintf(stderr, "%s\n", "test_integer_pow_error: string to stderr");
 
 	free(array);
 	free(array);
@@ -77,14 +80,11 @@ static void test_integer_pow_segmentation_fault() {
 
 	arbiter_assert(expected_result == integer_pow(base, exponent));
 
-	int* array = malloc(sizeof(int));
-	if (array == NULL) {
-		exit(1);
-	}
+	// test string to show redirection of stderr to log file
+	fprintf(stderr, "%s\n", "test_integer_pow_segmentation_fault: string to stderr");
 
-	int _ = array[-0xFFFFF];
-
-	free(array);
+	volatile int* p = NULL;
+	*p              = 42;
 }
 
 #define NUM_TESTS 4
@@ -96,5 +96,5 @@ int main() {
 			test_integer_pow_error,
 			test_integer_pow_segmentation_fault,
 	};
-	arbiter_run_tests(NUM_TESTS, "test_square", tests);
+	arbiter_run_tests(NUM_TESTS, "test-integer-pow", tests);
 }
